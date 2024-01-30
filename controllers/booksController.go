@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+	"net/url"
 
 	"github.com/gin-gonic/gin"
 )
@@ -280,21 +281,85 @@ func DeleteBook(c *gin.Context) {
 
 func GetBook(c *gin.Context) { 
 
-	var books []models.Books	
-	qgorm := initializers.DB.Raw(  `SELECT "id", title, t1.price , author, publisher, "year", "language", isbc, edition, pages, translator 
-									FROM books
-									LEFT JOIN (	SELECT quantity_books.book_id , Min(quantity_books.s_price) AS price
-												FROM quantity_books
-												WHERE quantity_books.quantity > 0 AND quantity_books.deleted_at IS NULL
-												GROUP BY quantity_books.book_id) AS t1 ON books."id" = t1.book_id
-									WHERE books.deleted_at IS NULL`).Scan(&books)
-	if qgorm.Error != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Failed to get book",
-		})
-		return
+	//get params
+	myurl, _ := url.Parse(c.Request.RequestURI)
+	params, _ := url.ParseQuery(myurl.RawQuery)
+	id, _ := strconv.ParseUint(params.Get("id"), 10, 64)
+	title := params.Get("title")
+	author := params.Get("author")
+	publisher := params.Get("publisher")
+	translator := params.Get("translator")
+	language := params.Get("translator")
+	min_pages :=params.Get("min_pages")
+	max_pages :=params.Get("max_pages")
+	min_year :=params.Get("min_year")
+	max_year :=params.Get("max_year")
+	min_price, _ :=strconv.Atoi(params.Get("min_price"))
+	max_price, _ :=strconv.Atoi(params.Get("max_price"))
+	category_id, _ := strconv.ParseUint(params.Get("category_id"), 10, 64)
+
+	fmt.Println(id, title, author, publisher, translator, language, min_pages, max_pages, min_year, max_year, min_price, max_price, category_id)
+	//find books
+	var books []models.Books
+
+	if category_id == 0  {
+		qgorm := initializers.DB.Raw(`	SELECT "id", title, t1.price , author, publisher, "year", "language", isbc, edition, pages, translator 
+										FROM books
+										LEFT JOIN (	SELECT quantity_books.book_id , Min(quantity_books.s_price) AS price
+													FROM quantity_books
+													WHERE quantity_books.quantity > 0 AND quantity_books.deleted_at IS NULL
+													GROUP BY quantity_books.book_id) AS t1 ON books."id" = t1.book_id
+										WHERE books.deleted_at IS NULL AND
+										(? = 0 OR "id" = ?) AND
+										(? = '' OR title LIKE ?) AND 
+										(? = '' OR author LIKE ?) AND
+										(? = '' OR publisher LIKE ?) AND
+										(? = '' OR translator LIKE ?) AND
+										(? = '' OR "language" = ?) AND
+										(? = '' OR pages >= ?) AND
+										(? = '' OR pages <= ?) AND
+										(? = '' OR "year" >= ?) AND
+										(? = '' OR "year" <= ?) AND
+										(? = 0 OR t1.price >= ?) AND
+										(? = 0 OR t1.price <= ?)`, id, id, title, "%"+title+"%", author, "%"+author+"%", publisher, "%"+publisher+"%", translator, "%"+translator+"%", language, language, min_pages, min_pages, max_pages, max_pages, min_year, min_year, max_year, max_year, min_price, min_price, max_price, max_price).Scan(&books)
+		if qgorm.Error != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Failed to get book",
+			})
+			return
+		}
+	}else{
+		qgorm := initializers.DB.Raw(`	SELECT t2."id", t2.title, t2.price , t2.author, t2.publisher, t2."year", t2."language", t2.isbc, t2.edition, t2.pages, t2.translator
+										FROM (	SELECT "id", title, t1.price , author, publisher, "year", "language", isbc, edition, pages, translator 
+												FROM books
+												LEFT JOIN (	SELECT quantity_books.book_id , Min(quantity_books.s_price) AS price
+															FROM quantity_books
+															WHERE quantity_books.quantity > 0 AND quantity_books.deleted_at IS NULL
+															GROUP BY quantity_books.book_id) AS t1 ON books."id" = t1.book_id
+												WHERE 	books.deleted_at IS NULL AND
+												(? = 0 OR "id" = ?) AND
+												(? = '' OR title LIKE ?) AND 
+												(? = '' OR author LIKE ?) AND
+												(? = '' OR publisher LIKE ?) AND
+												(? = '' OR translator LIKE ?) AND
+												(? = '' OR "language" = ?) AND
+												(? = '' OR pages >= ?) AND
+												(? = '' OR pages <= ?) AND
+												(? = '' OR "year" >= ?) AND
+												(? = '' OR "year" <= ?) AND
+												(? = 0 OR t1.price >= ?) AND
+												(? = 0 OR t1.price <= ?)) AS t2
+										JOIN 	(SELECT *
+												FROM category_books
+												WHERE category_books.category_id = ?) AS t3 ON t3.book_id = t2."id"`, id, id, title, "%"+title+"%", author, "%"+author+"%", publisher, "%"+publisher+"%", translator, "%"+translator+"%", language, language, min_pages, min_pages, max_pages, max_pages, min_year, min_year, max_year, max_year, min_price, min_price, max_price, max_price, category_id).Scan(&books)
+		if qgorm.Error != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Failed to get book",
+			})
+			return
+		}
 	}
-	
+	//respond
 	c.JSON(http.StatusOK, books)
 }
 

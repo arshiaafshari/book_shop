@@ -67,7 +67,7 @@ func main() {
 	r.PATCH("/confirmcomment", middleware.RequireAuth, middleware.IsMasterOrAdmin, controllers.ConfirmComment)
 	r.PUT("/likecomment", middleware.RequireAuth, controllers.LikeComment)
 
-	//order
+	//order*
 	r.PUT("/setorder", middleware.RequireAuth, controllers.SetOrder)
 	r.PUT("/addtoorder", middleware.RequireAuth, controllers.AddToOrder)
 	r.DELETE("/deletefromorder", middleware.RequireAuth, controllers.DeleteFromOrder)
@@ -78,12 +78,12 @@ func main() {
 	r.PATCH("/userorderstatus", middleware.RequireAuth, controllers.UserChangeOrderStatus)
 	r.PATCH("/orderstatus", middleware.RequireAuth, middleware.IsMasterOrAdmin, controllers.ChangeOrderStatus)
 
-	//bookmark
+	//bookmark*
 	r.PUT("/addbookmark", middleware.RequireAuth, controllers.AddBookmark)
 	r.DELETE("/deletebookmark", middleware.RequireAuth, controllers.DeleteBookmark)
 	r.GET("/getbookmarks", middleware.RequireAuth, controllers.GetBookmarks)
 	
-	//notification
+	//notification*
 	r.GET("/newnotification", middleware.RequireAuth, controllers.NewNotifications)
 	r.GET ("/getnotifications", middleware.RequireAuth, controllers.GetNotifications)
 
