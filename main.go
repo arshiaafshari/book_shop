@@ -87,8 +87,12 @@ func main() {
 	r.GET("/newnotification", middleware.RequireAuth, controllers.NewNotifications)
 	r.GET ("/getnotifications", middleware.RequireAuth, controllers.GetNotifications)
 
-
-
+	//admin
+	r.GET("/sellcount", controllers.CountSell)
+	r.GET("/sellprice", controllers.PriceSell)
+	r.GET("/commentcount", controllers.CountComment)
+	r.GET("/getrating", controllers.GetRate)
+	r.GET("/profit", controllers.Profit)
 
 
 	r.Run()

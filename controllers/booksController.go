@@ -1124,6 +1124,7 @@ func ConfirmComment(c *gin.Context) {
 	}else{
 		status = "blocked"
 	}
+
 	//find comment
 	var comment models.Comment_book
 	initializers.DB.First(&comment, "id = ?", CommentId)
@@ -1133,6 +1134,14 @@ func ConfirmComment(c *gin.Context) {
 		})
 		return
 	}
+
+	if comment.User_id == 14{
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Comment not found",
+		})
+		return
+	}
+
 	//update
 	dgorm := initializers.DB.Model(&comment).Updates(models.Comment_book{
 		Status: status,

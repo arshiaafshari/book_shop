@@ -4,7 +4,9 @@ import (
 	"example/user/initializers"
 	"example/user/models"
 	"net/http"
+	"net/url"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -45,6 +47,7 @@ func AddToOrder(c *gin.Context) {
 		Order_id uint
 		QBook_id uint
 		Quantity int
+		Discount_id uint
 	}
 
 	if c.Bind(&body) != nil {
@@ -636,7 +639,11 @@ func ChangeOrderStatus(c *gin.Context) {
 			})
 			return
 		}
-		upgorm := initializers.DB.Model(&order).Update("status", body.Status)
+		currentTime := time.Now()
+		date :=  strconv.Itoa(int(currentTime.Year()))+"-"+strconv.Itoa(int(currentTime.Month()))+"-"+strconv.Itoa(int(currentTime.Day()))
+		upgorm := initializers.DB.Model(&order).Updates(models.Order{
+			Status: body.Status ,
+			Confirm_date: date,})
 		if upgorm.Error != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": "Failed to change order status",
@@ -668,4 +675,102 @@ func ChangeOrderStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "order status change success",
 	})
+}
+
+
+
+
+
+
+
+
+func CountSell(c *gin.Context) {
+	//get params
+	myurl, _ := url.Parse(c.Request.RequestURI)
+	params, _ := url.ParseQuery(myurl.RawQuery)
+	catregory_id, _ := strconv.ParseUint(params.Get("category_id"), 10, 64)
+	start_date := params.Get("start_date")
+	end_date := params.Get("end_date")
+
+	var count struct {
+		Count int
+	}
+	if catregory_id == 0 {
+		initializers.DB.Model(&models.Order{}).Select("SUM(order_books.quantity) AS count").Where("status = 'confirmed' AND order.confirm_date >= ? AND order.confirm_date <= ? AND order_books.deleted_at IS NULL", start_date, end_date).Joins("JOIN order_books ON order_books.order_id = orders.id").Scan(&count)
+	}else{
+		initializers.DB.Model(&models.Order{}).Select("SUM(order_books.quantity) AS count").Where("status = 'confirmed' AND category_id = ? AND order.confirm_date >= ? AND order.confirm_date <= ? AND order_books.deleted_at IS NULL", catregory_id, start_date, end_date).Joins("JOIN order_books ON order_books.order_id = orders.id").Joins("JOIN quantity_books ON order_books.q_book_id = quantity_books.id").Joins("JOIN books ON quantity_books.book_id = books.id").Joins("JOIN category_books ON books.id = category_books.book_id").Scan(&count)		
+	}
+	c.JSON(http.StatusOK, count)
+}
+
+func PriceSell(c *gin.Context) {
+	//get params
+	myurl, _ := url.Parse(c.Request.RequestURI)
+	params, _ := url.ParseQuery(myurl.RawQuery)
+	catregory_id, _ := strconv.ParseUint(params.Get("category_id"), 10, 64)
+	start_date := params.Get("start_date")
+	end_date := params.Get("end_date")
+
+	var price struct {
+		Price int
+	}
+
+	if catregory_id == 0 {
+		initializers.DB.Model(&models.Order{}).Select("SUM(order_books.quantity*quantity_books.s_price) AS price").Where("status = 'confirmed' AND order.confirm_date >= ? AND order.confirm_date <= ? AND order_books.deleted_at IS NULL", start_date, end_date).Joins("JOIN order_books ON order_books.order_id = orders.id").Joins("JOIN quantity_books ON order_books.q_book_id = quantity_books.id").Scan(&price)
+	}else{
+		initializers.DB.Model(&models.Order{}).Select("SUM(order_books.quantity*quantity_books.s_price) AS price").Where("status = 'confirmed' AND category_id = ? AND order.confirm_date >= ? AND order.confirm_date <= ? AND order_books.deleted_at IS NULL", catregory_id, start_date, end_date).Joins("JOIN order_books ON order_books.order_id = orders.id").Joins("JOIN quantity_books ON order_books.q_book_id = quantity_books.id").Joins("JOIN books ON quantity_books.book_id = books.id").Joins("JOIN category_books ON books.id = category_books.book_id").Scan(&price)		
+	}
+	c.JSON(http.StatusOK, price)
+}
+
+func GetRate(c *gin.Context) {
+	//get params
+	myurl, _ := url.Parse(c.Request.RequestURI)
+	params, _ := url.ParseQuery(myurl.RawQuery)
+	catregory_id, _ := strconv.ParseUint(params.Get("category_id"), 10, 64)
+	start_date := params.Get("start_date")
+	end_date := params.Get("end_date")
+
+	var rate struct {
+		Rate float64
+	}
+
+	if catregory_id != 0{
+		initializers.DB.Table("rating_books").Select("AVG(rate) AS rate").Where("category_id = ? AND created_at >= ? AND created_at <= ? AND books.deleted_at IS NULL", catregory_id, start_date, end_date).Joins("JOIN books ON rating_books.book_id = books.id").Joins("JOIN books ON books.id = rating_books.book_id").Joins("JOIN category_books ON books.id = category_books.book_id").Scan(&rate)
+	}else{
+		initializers.DB.Table("rating_books").Select("AVG(rate) AS rate").Where("created_at >= ? AND created_at <= ?", start_date, end_date).Scan(&rate)
+	}
+	c.JSON(http.StatusOK, rate)
+}	
+
+func CountComment(c *gin.Context) {
+	//get params
+	myurl, _ := url.Parse(c.Request.RequestURI)
+	params, _ := url.ParseQuery(myurl.RawQuery)
+	start_date := params.Get("start_date")
+	end_date := params.Get("end_date")
+
+	var count struct {
+		Count int
+	}
+
+	initializers.DB.Table("comments").Select("COUNT(id) AS count").Where("created_at >= ? AND created_at <= ?", start_date, end_date).Scan(&count)
+
+	c.JSON(http.StatusOK, count)
+}	
+
+func Profit(c *gin.Context) {
+	//get params
+	myurl, _ := url.Parse(c.Request.RequestURI)
+	params, _ := url.ParseQuery(myurl.RawQuery)
+	start_date := params.Get("start_date")
+	end_date := params.Get("end_date")
+
+	var profit struct {
+		Profit int
+	}
+
+	initializers.DB.Table("orders").Select("SUM(order_books.quantity*((CASE WHEN discount_books.id IS NOT NULL THEN (quantity_books.s_price*(100-discount_books.discount)/100) ELSE quantity_books.s_price END)-quantity_books.b_price)) AS profit").Where("status = 'confirmed' AND confirm_date >= ? AND confirm_date <= ?", start_date, end_date).Joins("JOIN order_books ON order_books.order_id = orders.id").Joins("JOIN quantity_books ON order_books.q_book_id = quantity_books.id").Joins("JOIN dicounts ON order_books.discount_id = discount_books.id").Scan(&profit)
+
+	c.JSON(http.StatusOK, profit)
 }

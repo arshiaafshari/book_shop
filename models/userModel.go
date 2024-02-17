@@ -47,6 +47,7 @@ type Book struct {
 	Quantity_books []Quantity_book `gorm:"foreignKey:Book_id"`
 	Category_books []Category_book `gorm:"foreignKey:Book_id"`
 	UserBookmarks []UserBookmark `gorm:"foreignKey:Book_id"`
+
 }
 
 type About_book struct {
@@ -86,6 +87,8 @@ type Discount_book struct {
 	Discount     int `gorm:"between:1,100"`
 	StartDate   string `gorm:"type:date"`
 	Deadline    string `gorm:"type:date"`
+
+	Order_books []Order_book `gorm:"foreignKey:Discount_id"`
 }
 
 type Category struct {
@@ -107,6 +110,7 @@ type Order struct {
 	User_id     uint 
 	Status      string `gorm:"type: order_status_enum ; default:'not Finished' ;not null"`
 //	LStatus      string `gorm:"type: order_status_enum ; default:'not Finished' ;not null"`
+	Confirm_date string `gorm:"type:date"`
 	Order_books []Order_book `gorm:"foreignKey:Order_id"`
 }
 
@@ -117,6 +121,7 @@ type Quantity_book struct {
 	SPrice      int
 	Quantity    int `gorm:"unsigned"`
 	Order_books []Order_book `gorm:"foreignKey:QBook_id"`
+	Discount_books []Discount_book `gorm:"foreignKey:Book_id"`
 }
 
 type Order_book struct {
@@ -124,6 +129,7 @@ type Order_book struct {
 	Order_id uint 
 	QBook_id  uint 
 	Quantity int `gorm:"unsigned"`
+	Discount_id uint
 }
 
 type  UserBookmark struct {
@@ -138,4 +144,3 @@ type UserNotification struct {
 	Notification string
 	Seen        bool `gorm:"default:false"`
 }
-
